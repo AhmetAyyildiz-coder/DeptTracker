@@ -18,8 +18,9 @@ public class UsersController : BaseController
     public async Task<IActionResult> GetById([FromRoute] GetByIdUserQuery getByIdUserQuery)
     {
         GetByIdUserResponse result = await Mediator.Send(getByIdUserQuery);
-        return Ok(result);
+        return ApiSuccessWithData(result, 200);
     }
+    
 
     [HttpGet("GetFromAuth")]
     public async Task<IActionResult> GetFromAuth()

@@ -1,4 +1,6 @@
-﻿using Core.Security.Extensions;
+﻿using Application.Common.DTOs;
+using Core.Security.Extensions;
+using Core.WebAPI.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -26,5 +28,22 @@ public class BaseController : ControllerBase
     {
         int userId = HttpContext.User.GetUserId();
         return userId;
+    }
+    
+    // get getList, getById vb islemler - genellikle HttpGet- sonrası dönen response
+    protected static ObjectResult ApiSuccessWithData<T>(T data, int statusCode = 200)
+    {
+        return new ObjectResult(ApiResponseDto<T>.Success(statusCode, data));
+    }
+
+    // add - update islemleri sonrası dönen response.
+    protected static ObjectResult ApiSuccessWithStatusCode(int statusCode)
+    {
+        return new ObjectResult(ApiResponseDto<NotFoundDto>.Success(statusCode));
+    }
+
+    protected ObjectResult ApiError<T>(string error, int statusCode)
+    {
+        return new ObjectResult(ApiResponseDto<T>.Fail(statusCode, error));
     }
 }

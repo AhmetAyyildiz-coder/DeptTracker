@@ -10,13 +10,18 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Persistence;
 using Swashbuckle.AspNetCore.SwaggerUI;
+using System.Text.Json.Serialization;
 using WebAPI;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(opt =>
+{
+    // 	Error: Internal Server Error Response body  Download System.Text.Json.JsonException: A possible object cycle was detected. This can either be due to a cycle or if the object depth is larger than the maximum allowed depth of 32.
+    opt.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+});
 builder.Services.AddApplicationServices();
 builder.Services.AddSecurityServices();
 builder.Services.AddPersistenceServices(builder.Configuration);
@@ -86,9 +91,8 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-if (app.Environment.IsProduction())
-    app.ConfigureCustomExceptionMiddleware();
-
+app.ConfigureCustomExceptionMiddleware();
+app.UseDeveloperExceptionPage();
 app.UseAuthentication();
 app.UseAuthorization();
 

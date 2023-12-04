@@ -6,8 +6,10 @@ using Application.Features.Auth.Commands.Register;
 using Application.Features.Auth.Commands.RevokeToken;
 using Application.Features.Auth.Commands.VerifyEmailAuthenticator;
 using Application.Features.Auth.Commands.VerifyOtpAuthenticator;
+using Application.Features.Auth.Constants;
 using Core.Application.Dtos;
 using Core.Security.Entities;
+using Core.WebAPI.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 
@@ -31,12 +33,23 @@ public class AuthController : BaseController
     public async Task<IActionResult> Login([FromBody] UserForLoginDto userForLoginDto)
     {
         LoginCommand loginCommand = new() { UserForLoginDto = userForLoginDto, IpAddress = getIpAddress() };
-        LoggedResponse result = await Mediator.Send(loginCommand);
+        LoggedResponse result;
 
-        if (result.RefreshToken is not null)
-            setRefreshTokenToCookie(result.RefreshToken);
+        result = await Mediator.Send(loginCommand);
 
-        return Ok(result.ToHttpResponse());
+        // if (result is null)
+        //     return new ObjectResult(ApiResponseDto<LoggedResponse>.Fail(404, AuthMessages.UserDontExists));
+        if (result is null)
+            return ApiError<LoggedResponse>(AuthMessages.UserDontExists, 404);
+        
+        
+        setRefreshTokenToCookie(result.RefreshToken!);
+    
+        // return Ok(result!.ToHttpResponse());
+        // return new ObjectResult(
+        //     ApiResponseDto<LoggedResponse.LoggedHttpResponse>.Success(200, result.ToHttpResponse()));
+        return ApiSuccessWithData(result.ToHttpResponse());
+
     }
 
     [HttpPost("Register")]
@@ -51,16 +64,19 @@ public class AuthController : BaseController
     [HttpGet("RefreshToken")]
     public async Task<IActionResult> RefreshToken()
     {
-        RefreshTokenCommand refreshTokenCommand = new() { RefreshToken = getRefreshTokenFromCookies(), IpAddress = getIpAddress() };
+        RefreshTokenCommand refreshTokenCommand =
+            new() { RefreshToken = getRefreshTokenFromCookies(), IpAddress = getIpAddress() };
         RefreshedTokensResponse result = await Mediator.Send(refreshTokenCommand);
         setRefreshTokenToCookie(result.RefreshToken);
         return Created(uri: "", result.AccessToken);
     }
 
     [HttpPut("RevokeToken")]
-    public async Task<IActionResult> RevokeToken([FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] string? refreshToken)
+    public async Task<IActionResult> RevokeToken(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] string? refreshToken)
     {
-        RevokeTokenCommand revokeTokenCommand = new() { Token = refreshToken ?? getRefreshTokenFromCookies(), IpAddress = getIpAddress() };
+        RevokeTokenCommand revokeTokenCommand =
+            new() { Token = refreshToken ?? getRefreshTokenFromCookies(), IpAddress = getIpAddress() };
         RevokedTokenResponse result = await Mediator.Send(revokeTokenCommand);
         return Ok(result);
     }
@@ -69,7 +85,11 @@ public class AuthController : BaseController
     public async Task<IActionResult> EnableEmailAuthenticator()
     {
         EnableEmailAuthenticatorCommand enableEmailAuthenticatorCommand =
-            new() { UserId = getUserIdFromRequest(), VerifyEmailUrlPrefix = $"{_configuration.ApiDomain}/Auth/VerifyEmailAuthenticator" };
+            new()
+            {
+                UserId = getUserIdFromRequest(),
+                VerifyEmailUrlPrefix = $"{_configuration.ApiDomain}/Auth/VerifyEmailAuthenticator"
+            };
         await Mediator.Send(enableEmailAuthenticatorCommand);
 
         return Ok();
@@ -85,7 +105,8 @@ public class AuthController : BaseController
     }
 
     [HttpGet("VerifyEmailAuthenticator")]
-    public async Task<IActionResult> VerifyEmailAuthenticator([FromQuery] VerifyEmailAuthenticatorCommand verifyEmailAuthenticatorCommand)
+    public async Task<IActionResult> VerifyEmailAuthenticator(
+        [FromQuery] VerifyEmailAuthenticatorCommand verifyEmailAuthenticatorCommand)
     {
         await Mediator.Send(verifyEmailAuthenticatorCommand);
         return Ok();
@@ -102,8 +123,13 @@ public class AuthController : BaseController
     }
 
     private string getRefreshTokenFromCookies() =>
-        Request.Cookies["refreshToken"] ?? throw new ArgumentException("Refresh token is not found in request cookies.");
+        Request.Cookies["refreshToken"] ??
+        throw new ArgumentException("Refresh token is not found in request cookies.");
 
+    /// <summary>
+    /// dönen refresh token'i tarayıcının cookie'sine kaydeder.
+    /// </summary>
+    /// <param name="refreshToken"></param>
     private void setRefreshTokenToCookie(RefreshToken refreshToken)
     {
         CookieOptions cookieOptions = new() { HttpOnly = true, Expires = DateTime.UtcNow.AddDays(7) };

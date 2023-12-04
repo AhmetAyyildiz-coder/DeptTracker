@@ -53,11 +53,16 @@ public class LoginCommand : IRequest<LoggedResponse>
                 predicate: u => u.Email == request.UserForLoginDto.Email,
                 cancellationToken: cancellationToken
             );
-            await _authBusinessRules.UserShouldBeExistsWhenSelected(user);
-            await _authBusinessRules.UserPasswordShouldBeMatch(user!.Id, request.UserForLoginDto.Password);
-
+            
+            // // buradaki iş kuralları hatalı durumda exception fırlatmamıza olanak sağlayacaktır.
+            // await _authBusinessRules.UserShouldBeExistsWhenSelected(user);
+            // await _authBusinessRules.UserPasswordShouldBeMatch(user!.Id, request.UserForLoginDto.Password);
+            //
+            if (user is null)
+                return null!;
+            
             LoggedResponse loggedResponse = new();
-
+            
             if (user.AuthenticatorType is not AuthenticatorType.None)
             {
                 if (request.UserForLoginDto.AuthenticatorCode is null)
@@ -78,6 +83,7 @@ public class LoginCommand : IRequest<LoggedResponse>
 
             loggedResponse.AccessToken = createdAccessToken;
             loggedResponse.RefreshToken = addedRefreshToken;
+            loggedResponse.UserId = user.Id;
             return loggedResponse;
         }
     }

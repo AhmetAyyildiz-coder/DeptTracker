@@ -8,7 +8,7 @@ public class WebApiConfiguration
     public WebApiConfiguration()
     {
         ApiDomain = string.Empty;
-        AllowedOrigins = Array.Empty<string>();
+        AllowedOrigins = new[] { "http://localhost:3000", "http://localhost:3011" };
     }
 
     public WebApiConfiguration(string apiDomain, string[] allowedOrigins)
